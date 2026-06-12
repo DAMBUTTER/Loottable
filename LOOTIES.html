@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MMO Loot Wheel</title>
+
+<style>
+body{
+    margin:0;
+    background:#111;
+    color:#fff;
+    font-family:Arial,sans-serif;
+}
+h1{
+    text-align:center;
+    color:#ffd700;
+}
+.container{
+    display:flex;
+    justify-content:center;
+    gap:20px;
+    padding:20px;
+    flex-wrap:wrap;
+}
+.panel{
+    background:#1e1e1e;
+    border:2px solid #444;
+    border-radius:10px;
+    padding:15px;
+}
+textarea{
+    width:280px;
+    height:180px;
+    background:#000;
+    color:#fff;
+    border:1px solid #555;
+    padding:5px;
+}
+#wheelContainer{
+    position:relative;
+    width:500px;
+    text-align:center;
+}
+#wheel{
+    background:#222;
+    border-radius:50%;
+    border:5px solid #666;
+}
+.pointer{
+    position:absolute;
+    top:-10px;
+    left:50%;
+    transform:translateX(-50%);
+    font-size:40px;
+    color:red;
+    z-index:10;
+}
+button{
+    padding:12px 25px;
+    font-size:18px;
+    background:#ffd700;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+    margin-top:10px;
+}
+button:hover{
+    background:#ffeb66;
+}
+.currentLoot{
+    text-align:center;
+    font-size:28px;
+    color:#00ff99;
+    min-height:40px;
+}
+table{
+    width:90%;
+    margin:20px auto;
+    border-collapse:collapse;
+}
+th,td{
+    border:1px solid #555;
+    padding:10px;
+}
+th{
+    background:#333;
+}
+.highlight{
+    background:#005500;
+    color:#fff;
+}
+#lootList div{
+    padding:4px;
+}
+</style>
+</head>
+<body>
+
+<h1>LOOT TIME</h1>
+
+<h2 style="text-align:center;color:#ffd700;">Loot By Winner</h2>
+<div id="winnerCards" style="display:none;flex-wrap:wrap;gap:15px;justify-content:center;padding:20px;"></div>
+
+<div class="container">
+
+<div class="panel">
+<h2>Players</h2>
+<textarea id="players">Player1
+Player2
+Player3
+Player4
+Player5
+Player6</textarea>
+</div>
+
+<div id="wheelContainer">
+<div class="pointer">▼</div>
+<canvas id="wheel" width="500" height="500"></canvas>
+
+<div class="currentLoot" id="currentLoot">
+Ready
+</div>
+
+<button id="rollBtn" onclick="startLootRoll()">
+Start Loot Roll
+</button>
+</div>
+
+<div class="panel">
+<h2>Loot Items</h2>
+<textarea id="loot">Item1
+Item2
+Item3
+Item4
+Item5</textarea>
+
+<div id="lootList"></div>
+</div>
+
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Loot Item</th>
+<th>Winner</th>
+</tr>
+</thead>
+<tbody id="results"></tbody>
+</table>
+
+
+<script>
+const canvas = document.getElementById("wheel");
+const ctx = canvas.getContext("2d");
+
+let angle = 0;
+
+function drawWheel(players){
+    ctx.clearRect(0,0,500,500);
+
+    if(players.length===0) return;
+
+    const center=250;
+    const radius=220;
+    const arc=(Math.PI*2)/players.length;
+
+    for(let i=0;i<players.length;i++){
+
+        ctx.beginPath();
+        ctx.moveTo(center,center);
+
+        ctx.arc(
+            center,
+            center,
+            radius,
+            angle+(i*arc),
+            angle+((i+1)*arc)
+        );
+
+        ctx.closePath();
+
+        ctx.fillStyle=`hsl(${(360/players.length)*i},70%,45%)`;
+        ctx.fill();
+
+        ctx.save();
+        ctx.translate(center,center);
+        ctx.rotate(angle+i*arc+arc/2);
+
+        ctx.fillStyle="white";
+        ctx.font="16px Arial";
+        ctx.textAlign="right";
+        ctx.fillText(players[i],radius-20,5);
+
+        ctx.restore();
+    }
+}
+
+drawWheel(["Players"]);
+
+function sleep(ms){
+    return new Promise(resolve=>setTimeout(resolve,ms));
+}
+
+async function spinWheel(players){
+
+    return new Promise(resolve=>{
+
+        let velocity=Math.random()*0.25+0.35;
+
+        function animate(){
+
+            angle+=velocity;
+            velocity*=0.985;
+
+            drawWheel(players);
+
+            if(velocity>0.002){
+
+                requestAnimationFrame(animate);
+
+            }else{
+
+                const arc=(Math.PI*2)/players.length;
+
+                let winnerIndex=Math.floor(
+                    ((((Math.PI*1.5-angle)%(Math.PI*2))
+                    +(Math.PI*2))%(Math.PI*2))/arc
+                );
+
+                resolve(players[winnerIndex]);
+            }
+        }
+
+        animate();
+    });
+
+    window.scrollTo({top:0,behavior:"smooth"});
+    document.getElementById("rollBtn").style.display="inline-block";
+}
+
+async function startLootRoll(){
+    document.getElementById("rollBtn").style.display="none";
+
+    document.getElementById("results").innerHTML="";
+
+    let players=document.getElementById("players")
+        .value.split("\n")
+        .map(x=>x.trim())
+        .filter(x=>x);
+
+    let loot=document.getElementById("loot")
+        .value.split("\n")
+        .map(x=>x.trim())
+        .filter(x=>x);
+
+    if(players.length===0 || loot.length===0){
+        alert("Add players and loot items.");
+        return;
+    }
+
+    let availablePlayers=[...players];
+
+    const lootList=document.getElementById("lootList");
+    lootList.innerHTML="";
+
+    loot.forEach(item=>{
+        const div=document.createElement("div");
+        div.textContent=item;
+        lootList.appendChild(div);
+    });
+
+    const winnerMap = {};
+
+    for(let i=0;i<loot.length;i++){
+
+        if(availablePlayers.length===0){
+            availablePlayers=[...players];
+        }
+
+        [...lootList.children].forEach(
+            x=>x.classList.remove("highlight")
+        );
+
+        lootList.children[i].classList.add("highlight");
+
+        document.getElementById("currentLoot").textContent =
+            "Rolling for: " + loot[i];
+
+        drawWheel(availablePlayers);
+
+        const winner=await spinWheel(availablePlayers);
+
+        const row=document.createElement("tr");
+        row.innerHTML=
+            "<td>"+loot[i]+"</td><td>"+winner+"</td>";
+
+        document.getElementById("results").appendChild(row);
+
+        if(!winnerMap[winner]) winnerMap[winner]=[];
+        winnerMap[winner].push(loot[i]);
+
+        availablePlayers=
+            availablePlayers.filter(
+                p=>p!==winner
+            );
+
+        await sleep(1000);
+    }
+
+    document.getElementById("currentLoot").textContent =
+        "Loot Distribution Complete!";
+
+    const cards=document.getElementById("winnerCards");
+    cards.style.display="flex";
+    cards.innerHTML="";
+
+    Object.entries(winnerMap).forEach(([player,items])=>{
+        const card=document.createElement("div");
+        card.style.cssText="background:#1e1e1e;border:2px solid #ffd700;border-radius:10px;padding:12px;min-width:220px;";
+        card.innerHTML="<h3 style='color:#ffd700;margin-top:0'>"+player+"</h3><ul>"+items.map(i=>"<li>"+i+"</li>").join("")+"</ul>";
+        cards.appendChild(card);
+    });
+
+    window.scrollTo({top:0,behavior:"smooth"});
+    document.getElementById("rollBtn").style.display="inline-block";
+}
+</script>
+
+</body>
+</html>
