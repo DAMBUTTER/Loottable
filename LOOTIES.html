@@ -99,13 +99,13 @@ th{
 
 <h1>LOOT TIME</h1>
 
-<h2 style="text-align:center;color:#ffd700;">Loot By Winner</h2>
+
 <div id="winnerCards" style="display:none;flex-wrap:wrap;gap:15px;justify-content:center;padding:20px;"></div>
 
 <div class="container">
 
 <div class="panel">
-<h2>Players</h2>
+
 <textarea id="players">Player1
 Player2
 Player3
@@ -128,7 +128,7 @@ Start Loot Roll
 </div>
 
 <div class="panel">
-<h2>Loot Items</h2>
+
 <textarea id="loot">Item1
 Item2
 Item3
@@ -151,7 +151,18 @@ Item5</textarea>
 </table>
 
 
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <script>
+
+function launchConfetti(){
+const duration=5000,end=Date.now()+duration;
+(function frame(){
+confetti({particleCount:6,angle:60,spread:60,origin:{x:0}});
+confetti({particleCount:6,angle:120,spread:60,origin:{x:1}});
+if(Date.now()<end) requestAnimationFrame(frame);
+})();
+}
+
 const canvas = document.getElementById("wheel");
 const ctx = canvas.getContext("2d");
 
@@ -207,12 +218,12 @@ async function spinWheel(players){
 
     return new Promise(resolve=>{
 
-        let velocity=Math.random()*0.25+0.35;
+        let velocity=0.45;
 
         function animate(){
 
             angle+=velocity;
-            velocity*=0.985;
+            velocity*=0.9975;
 
             drawWheel(players);
 
@@ -311,6 +322,7 @@ async function startLootRoll(){
 
     document.getElementById("currentLoot").textContent =
         "Loot Distribution Complete!";
+    launchConfetti();
 
     const cards=document.getElementById("winnerCards");
     cards.style.display="flex";
